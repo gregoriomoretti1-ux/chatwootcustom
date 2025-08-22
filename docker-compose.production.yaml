@@ -1,6 +1,9 @@
+version: '3'
+
 services:
   base: &base
     image: chatwoot/chatwoot:latest
+    env_file: .env ## Change this file for customized env variables
     volumes:
       - storage_data:/app/storage
 
@@ -9,25 +12,12 @@ services:
     depends_on:
       - postgres
       - redis
+    ports:
+      - '127.0.0.1:3000:3000'
     environment:
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
-      # Valori presi dall'ambiente di Dokploy (vedi passo 2)
-      - FRONTEND_URL=${FRONTEND_URL}
-      - BACKEND_URL=${BACKEND_URL}
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
-      - POSTGRES_USERNAME=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_URL=redis://default:${REDIS_PASSWORD}@redis:6379/1
-      - ACTIVE_STORAGE_SERVICE=${ACTIVE_STORAGE_SERVICE}
-      - ENABLE_ACCOUNT_SIGNUP=${ENABLE_ACCOUNT_SIGNUP}
-      - LOG_LEVEL=${LOG_LEVEL}
-      - DEFAULT_LOCALE=${DEFAULT_LOCALE}
-      - RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT}
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     restart: always
@@ -41,34 +31,31 @@ services:
       - NODE_ENV=production
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
-      - POSTGRES_USERNAME=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_URL=redis://default:${REDIS_PASSWORD}@redis:6379/1
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     restart: always
 
   postgres:
     image: pgvector/pgvector:pg16
-    environment:
-      - POSTGRES_DB=${POSTGRES_DATABASE}
-      - POSTGRES_USER=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    restart: always
+    ports:
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: always
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=postgres
+      # Please provide your own password.
+      - POSTGRES_PASSWORD=
 
   redis:
-    image: redis:7-alpine
-    # ATTENZIONE: $$ serve a non far espandere Docker Compose
-    command: ["sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\""]
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    image: redis:alpine
+    restart: always
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    env_file: .env
     volumes:
       - redis_data:/data
-    restart: always
+    ports:
+      - '127.0.0.1:6379:6379'
 
 volumes:
   storage_data:
